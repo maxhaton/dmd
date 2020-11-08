@@ -251,13 +251,13 @@ public:
     OutBuffer* donebuf;
     OutBuffer* buf;
     AST.AggregateDeclaration adparent;
-    AST.ClassDeclaration cdparent;
     AST.TemplateDeclaration tdparent;
     Identifier ident;
     LINK linkage = LINK.d;
     bool forwardedAA;
     AST.Type* origType;
     AST.Prot.Kind currentProt; /// Last written protection level
+    AST.STC storageClass; /// Currently applicable storage classes
 
     int ignoredCounter; /// How many symbols were ignored
     bool hasReal;
@@ -275,21 +275,21 @@ public:
     /// Visit `dsym` with `buf` while temporarily clearing **parent fields
     private void visitAsRoot(AST.Dsymbol dsym, OutBuffer* buf)
     {
+        const stcStash = this.storageClass;
         auto adStash = this.adparent;
-        auto cdStash = this.cdparent;
         auto tdStash = this.tdparent;
         auto bufStash = this.buf;
         auto countStash = this.ignoredCounter;
 
+        this.storageClass = AST.STC.undefined_;
         this.adparent = null;
-        this.cdparent = null;
         this.tdparent = null;
         this.buf = buf;
 
         dsym.accept(this);
 
+        this.storageClass = stcStash;
         this.adparent = adStash;
-        this.cdparent = cdStash;
         this.tdparent = tdStash;
         this.buf = bufStash;
         this.ignoredCounter = countStash;
@@ -347,7 +347,7 @@ public:
     private void writeProtection(const AST.Prot.Kind kind)
     {
         // Don't write protection for global declarations
-        if (!(adparent || cdparent))
+        if (!adparent)
             return;
 
         string token;
@@ -421,6 +421,19 @@ public:
             if (adparent || s.prot().kind >= AST.Prot.Kind.public_)
                 s.accept(this);
         }
+    }
+
+    override void visit(AST.StorageClassDeclaration scd)
+    {
+        debug (Debug_DtoH)
+        {
+            printf("[AST.StorageClassDeclaration enter] %s\n", pd.toChars());
+            scope(exit) printf("[AST.StorageClassDeclaration exit] %s\n", pd.toChars());
+        }
+        const stcStash = this.storageClass;
+        this.storageClass |= scd.stc;
+        visit(cast(AST.AttribDeclaration) scd);
+        this.storageClass = stcStash;
     }
 
     override void visit(AST.LinkDeclaration ld)
@@ -510,14 +523,21 @@ public:
             buf.writestring("extern ");
         if (adparent && fd.isStatic())
             buf.writestring("static ");
-        if (adparent && fd.vtblIndex != -1)
-        {
-            if (!fd.isOverride())
+        else if (adparent && (
+            // Virtual functions in non-templated classes
+            (fd.vtblIndex != -1 && !fd.isOverride()) ||
+
+            // Virtual functions in templated classes (fd.vtblIndex still -1)
+            (tdparent && adparent.isClassDeclaration() && !(this.storageClass & AST.STC.final_ || fd.isFinal))))
                 buf.writestring("virtual ");
 
+        if (adparent && !tdparent)
+        {
             auto s = adparent.search(Loc.initial, fd.ident);
+            auto cd = adparent.isClassDeclaration();
+
             if (!(adparent.storage_class & AST.STC.abstract_) &&
-                !(cast(AST.ClassDeclaration)adparent).isAbstract() &&
+                !(cd && cd.isAbstract()) &&
                 s is fd && !fd.overnext)
             {
                 const cn = adparent.ident.toChars();
@@ -683,10 +703,7 @@ public:
         if (adparent && vd.type && vd.type.deco)
         {
             writeProtection(vd.protection.kind);
-            auto save = cdparent;
-            cdparent = vd.isField() ? adparent.isClassDeclaration() : null;
             typeToBuffer(vd.type, vd.ident);
-            cdparent = save;
             buf.writestringln(";");
 
             if (auto t = vd.type.isTypeStruct())
@@ -1065,7 +1082,7 @@ public:
         if (cast(void*)cd in visited)
             return;
         visited[cast(void*)cd] = true;
-        if (!cd.isCPPclass())
+        if (!cd.isCPPclass() && !(tdparent && linkage == LINK.cpp)) // FIXME: ClassKind not set for templated classes?
         {
             ignored("non-cpp class %s", cd.toChars());
             return;
@@ -1077,7 +1094,7 @@ public:
         buf.writestring(classAsStruct ? "struct " : "class ");
         buf.writestring(cd.ident.toChars());
 
-        if (cd.storage_class & AST.STC.final_)
+        if (cd.storage_class & AST.STC.final_ || (tdparent && this.storageClass & AST.STC.final_))
             buf.writestring(" final");
 
         assert(cd.baseclasses);
@@ -1086,8 +1103,19 @@ public:
         {
             buf.writestring(i == 0 ? " : public " : ", public ");
 
-            buf.writestring(base.sym.ident.toChars());
-            includeSymbol(base.sym);
+            // Base classes/interfaces might depend on template parameters,
+            // e.g. class A(T) : B!T { ... }
+            if (base.sym is null)
+            {
+                auto ti = base.type.isTypeInstance();
+                assert(ti);
+                visitTi(ti.tempinst);
+            }
+            else
+            {
+                buf.writestring(base.sym.toChars());
+                includeSymbol(base.sym);
+            }
         }
 
         if (!cd.members)
@@ -1404,7 +1432,7 @@ public:
             printf("[AST.TypeBasic enter] %s\n", t.toChars());
             scope(exit) printf("[AST.TypeBasic exit] %s\n", t.toChars());
         }
-        if (!cdparent && t.isConst())
+        if (t.isConst())
             buf.writestring("const ");
         string typeName;
         switch (t.ty)
@@ -1451,7 +1479,7 @@ public:
         t.next.accept(this);
         if (t.next.ty != AST.Tfunction)
             buf.writeByte('*');
-        if (!cdparent && t.isConst())
+        if (t.isConst())
             buf.writestring(" const");
     }
 
@@ -1560,7 +1588,7 @@ public:
             //printf("Visiting enum %s from module %s %s\n", t.sym.toPrettyChars(), t.toChars(), t.sym.loc.toChars());
             visitAsRoot(t.sym, fwdbuf);
         }
-        if (!cdparent && t.isConst())
+        if (t.isConst())
             buf.writestring("const ");
         enumToBuffer(t.sym);
     }
@@ -1580,7 +1608,7 @@ public:
             fwdbuf.writestringln(";");
         }
 
-        if (!cdparent && t.isConst())
+        if (t.isConst())
             buf.writestring("const ");
         if (auto ti = t.sym.parent.isTemplateInstance())
         {
@@ -1597,7 +1625,7 @@ public:
             printf("[AST.TypeDArray enter] %s\n", t.toChars());
             scope(exit) printf("[AST.TypeDArray exit] %s\n", t.toChars());
         }
-        if (!cdparent && t.isConst())
+        if (t.isConst())
             buf.writestring("const ");
         buf.writestring("_d_dynamicArray< ");
         t.next.accept(this);
@@ -1659,7 +1687,7 @@ public:
             return;
         visited[cast(void*)td] = true;
 
-        if (!td.parameters || !td.onemember || (!td.onemember.isStructDeclaration && !td.onemember.isFuncDeclaration))
+        if (!td.parameters || !td.onemember || (!td.onemember.isStructDeclaration && !td.onemember.isClassDeclaration && !td.onemember.isFuncDeclaration))
         {
             visit(cast(AST.Dsymbol)td);
             return;
@@ -1727,11 +1755,11 @@ public:
             fwdbuf.writestringln(";");
         }
 
-        if (!cdparent && t.isConst())
+        if (t.isConst())
             buf.writestring("const ");
         buf.writestring(t.sym.toChars());
         buf.writeByte('*');
-        if (!cdparent && t.isConst())
+        if (t.isConst())
             buf.writestring(" const");
     }
 
