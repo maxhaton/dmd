@@ -5683,7 +5683,18 @@ struct ASTBase
             v.visit(this);
         }
     }
+    extern (C++) final class AttributeInitExp : DefaultInitExp
+    {
+        extern (D) this(const ref Loc loc, TOK tok)
+        {
+            super(loc, tok, __traits(classInstanceSize, AttributeInitExp));
+        }
 
+        override void accept(Visitor v)
+        {
+            v.visit(this);
+        }
+    }
     extern (C++) final class LineInitExp : DefaultInitExp
     {
         extern (D) this(const ref Loc loc)

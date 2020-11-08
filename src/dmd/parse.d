@@ -2131,6 +2131,7 @@ final class Parser(AST) : Lexer
         case TOK.string_:
         case TOK.hexadecimalString:
         case TOK.file:
+        case TOK.attribute:
         case TOK.fileFullPath:
         case TOK.line:
         case TOK.moduleString:
@@ -5609,6 +5610,7 @@ final class Parser(AST) : Lexer
         case TOK.is_:
         case TOK.leftBracket:
         case TOK.file:
+        case TOK.attribute:
         case TOK.fileFullPath:
         case TOK.line:
         case TOK.moduleString:
@@ -6835,6 +6837,7 @@ final class Parser(AST) : Lexer
         {
             switch (token.value)
             {
+                case TOK.attribute:      e = new AST.AttributeInitExp(token.loc, TOK.attribute); break;
             case TOK.file:           e = new AST.FileInitExp(token.loc, TOK.file); break;
             case TOK.fileFullPath:   e = new AST.FileInitExp(token.loc, TOK.fileFullPath); break;
             case TOK.line:           e = new AST.LineInitExp(token.loc); break;
@@ -7057,6 +7060,7 @@ final class Parser(AST) : Lexer
                     case TOK.string_:
                     case TOK.hexadecimalString:
                     case TOK.file:
+                    case TOK.attribute:
                     case TOK.fileFullPath:
                     case TOK.line:
                     case TOK.moduleString:
@@ -7896,7 +7900,13 @@ final class Parser(AST) : Lexer
             e = new AST.IntegerExp(loc, loc.linnum, AST.Type.tint32);
             nextToken();
             break;
-
+        case TOK.attribute:
+            import dmd.mtype : Type;
+            AST.Expression cont = null;
+            //Not in an attribute, nothing
+            e = new AST.ArrayLiteralExp(loc, Type.tstring.arrayOf(), cont);
+            nextToken();
+            break;
         case TOK.moduleString:
             {
                 const(char)* s = md ? md.toChars() : mod.toChars();
@@ -8556,6 +8566,7 @@ final class Parser(AST) : Lexer
                         case TOK.traits:
                         case TOK.vector:
                         case TOK.file:
+                        case TOK.attribute:
                         case TOK.fileFullPath:
                         case TOK.line:
                         case TOK.moduleString:

@@ -133,7 +133,7 @@ struct Scope
 
     // user defined attributes
     UserAttributeDeclaration userAttribDecl;
-
+    UserAttributeDeclaration withinThisDecl = null;
     DocComment* lastdc;        /// documentation comment for last symbol at this scope
     uint[void*] anchorCounts;  /// lookup duplicate anchor name count
     Identifier prevAnchor;     /// qualified symbol name of last doc anchor

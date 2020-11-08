@@ -1352,13 +1352,18 @@ extern (C++) final class CompileDeclaration : AttribDeclaration
  */
 extern (C++) final class UserAttributeDeclaration : AttribDeclaration
 {
+    import dmd.root.array;
     Expressions* atts;
-
     extern (D) this(Expressions* atts, Dsymbols* decl)
     {
+        import std.stdio;    
         super(decl);
         //printf("UserAttributeDeclaration()\n");
         this.atts = atts;
+        //for(int i = 0; i != (*atts).length; ++i) {
+        //    puts((*atts)[i].toChars());
+        //}
+        //(*decl).each!(x => x.toPrettyChars().puts());
     }
 
     override Dsymbol syntaxCopy(Dsymbol s)

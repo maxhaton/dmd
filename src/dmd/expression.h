@@ -214,6 +214,7 @@ public:
     DefaultInitExp* isDefaultInitExp();
     FileInitExp* isFileInitExp();
     LineInitExp* isLineInitExp();
+    AttributeInitExp* isAttributeInitExp();
     ModuleInitExp* isModuleInitExp();
     FuncInitExp* isFuncInitExp();
     PrettyFuncInitExp* isPrettyFuncInitExp();
@@ -1280,7 +1281,12 @@ public:
     Expression *resolveLoc(const Loc &loc, Scope *sc);
     void accept(Visitor *v) { v->visit(this); }
 };
-
+class AttributeInitExp : public DefaultInitExp
+{
+public:
+    Expression *resolveLoc(const Loc &loc, Scope *sc);
+    void accept(Visitor *v) { v->visit(this); }
+};
 class LineInitExp : public DefaultInitExp
 {
 public:

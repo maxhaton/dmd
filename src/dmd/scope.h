@@ -115,7 +115,7 @@ struct Scope
     unsigned flags;
 
     UserAttributeDeclaration *userAttribDecl;   // user defined attributes
-
+    UserAttributeDeclaration *withinThisDecl;
     DocComment *lastdc;         // documentation comment for last symbol at this scope
     AA *anchorCounts;           // lookup duplicate anchor name count
     Identifier *prevAnchor;     // qualified symbol name of last doc anchor

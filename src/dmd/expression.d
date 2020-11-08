@@ -1776,6 +1776,7 @@ extern (C++) abstract class Expression : ASTNode
         inout(DefaultInitExp)    isDefaultInitExp() { return isDefaultInitOp(op) ? cast(typeof(return))this: null; }
         inout(FileInitExp)       isFileInitExp() { return (op == TOK.file || op == TOK.fileFullPath) ? cast(typeof(return))this : null; }
         inout(LineInitExp)       isLineInitExp() { return op == TOK.line ? cast(typeof(return))this : null; }
+        inout(AttributeInitExp)       isAttributeInitExp() { return op == TOK.attribute ? cast(typeof(return))this : null; }
         inout(ModuleInitExp)     isModuleInitExp() { return op == TOK.moduleString ? cast(typeof(return))this : null; }
         inout(FuncInitExp)       isFuncInitExp() { return op == TOK.functionString ? cast(typeof(return))this : null; }
         inout(PrettyFuncInitExp) isPrettyFuncInitExp() { return op == TOK.prettyFunction ? cast(typeof(return))this : null; }
@@ -6752,7 +6753,8 @@ bool isDefaultInitOp(TOK op) pure nothrow @safe @nogc
 {
     return  op == TOK.prettyFunction    || op == TOK.functionString ||
             op == TOK.line              || op == TOK.moduleString   ||
-            op == TOK.file              || op == TOK.fileFullPath   ;
+            op == TOK.file              || op == TOK.fileFullPath   ||
+            op == TOK.attribute;
 }
 
 /***********************************************************
@@ -6781,7 +6783,6 @@ extern (C++) final class FileInitExp : DefaultInitExp
 
     override Expression resolveLoc(const ref Loc loc, Scope* sc)
     {
-        //printf("FileInitExp::resolve() %s\n", toChars());
         const(char)* s;
         if (op == TOK.fileFullPath)
             s = FileName.toAbsolute(loc.isValid() ? loc.filename : sc._module.srcfile.toChars());
@@ -6800,6 +6801,85 @@ extern (C++) final class FileInitExp : DefaultInitExp
     }
 }
 
+/***********************************************************
+ */
+extern (C++) final class AttributeInitExp : DefaultInitExp
+{
+    import std.stdio, core.runtime;
+    extern (D) this(const ref Loc loc, TOK tok)
+    {
+        super(loc, tok, __traits(classInstanceSize, AttributeInitExp));
+    }
+
+    override Expression resolveLoc(const ref Loc loc, Scope* sc)
+    {
+        import dmd.attrib;
+        Expression e;
+        UserAttributeDeclaration udaDecl;
+        //We have the location and enclosing scope
+        //Find out if we are in a UDA
+        int i = 0;
+        Scope* walk = sc;
+        while(walk) {
+            //writeln("ENCLOSING:");
+            ++i;
+            if(auto g = walk.withinThisDecl) {
+                //writeln("UDA ", g);
+                udaDecl = g;
+                break;
+            }
+            walk = walk.enclosing;
+        }
+        walk = sc;
+        i = 0;
+        while(walk) {
+            //writeln("CALLSC:");
+            ++i;
+            if(auto g = walk.withinThisDecl) {
+                //writeln("UDA ", g);
+                udaDecl = g;
+                break;
+            }
+            walk = walk.callsc;
+        }
+        //defaultTraceHandler.writeln;
+        auto ty = Type.tstring.arrayOf();
+        if(!udaDecl) {
+            auto empty = new Expressions;
+            e = new ArrayLiteralExp(loc, ty, empty);
+            e = e.expressionSemantic(sc);
+            e = e.castTo(sc, ty);
+            return e;
+        } else {
+            auto theDecls = udaDecl.decl;
+            
+            auto exp = new Expressions;
+            //writeln("The length is ", theDecls.length);
+            for(uint idx = 0; idx != theDecls.length; ++idx)
+            {
+                //writeln(idx);
+                auto s = (*theDecls)[idx].toPrettyChars();
+                //puts(s);
+                auto d = (*theDecls)[idx].toPrettyChars().toDString();
+                Expression str = new StringExp(loc, d);
+                exp.push(str);
+            }
+            //exp.push(str);
+            //exp.push(new StringExp(loc, "My arse"));
+            //exp.push(new StringExp(loc, to!string(length)));
+            e = new ArrayLiteralExp(loc, null, exp);
+        }
+           
+        e = e.expressionSemantic(sc);
+        
+        return e;
+    }
+
+    override void accept(Visitor v)
+    {
+        v.visit(this);
+    }
+}
 /***********************************************************
  */
 extern (C++) final class LineInitExp : DefaultInitExp

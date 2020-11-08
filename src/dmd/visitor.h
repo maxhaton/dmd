@@ -281,6 +281,7 @@ class CondExp;
 class DefaultInitExp;
 class FileInitExp;
 class LineInitExp;
+class AttributeInitExp;
 class ModuleInitExp;
 class FuncInitExp;
 class PrettyFuncInitExp;
@@ -508,6 +509,7 @@ public:
     virtual void visit(PrettyFuncInitExp *e) { visit((DefaultInitExp *)e); }
     virtual void visit(FileInitExp *e) { visit((DefaultInitExp *)e); }
     virtual void visit(LineInitExp *e) { visit((DefaultInitExp *)e); }
+    virtual void visit(AttributeInitExp *e) { visit((DefaultInitExp *)e); }
     virtual void visit(ModuleInitExp *e) { visit((DefaultInitExp *)e); }
 
     // BinExp

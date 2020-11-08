@@ -2219,9 +2219,11 @@ private extern(C++) final class DsymbolSemanticVisitor : Visitor
 
     override void visit(UserAttributeDeclaration uad)
     {
+        uad._scope.withinThisDecl = uad;
         //printf("UserAttributeDeclaration::semantic() %p\n", this);
-        if (uad.decl && !uad._scope)
+        if (uad.decl && !uad._scope) {
             uad.Dsymbol.setScope(sc); // for function local symbols
+        }           
         arrayExpressionSemantic(uad.atts, sc, true);
         return attribSemantic(uad);
     }

@@ -11476,7 +11476,11 @@ private extern (C++) final class ExpressionSemanticVisitor : Visitor
         e.type = Type.tstring;
         result = e;
     }
-
+    override void visit(AttributeInitExp e)
+    {
+        e.type = Type.tstring.arrayOf();
+        result = e;
+    }
     override void visit(LineInitExp e)
     {
         e.type = Type.tint32;
