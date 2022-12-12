@@ -1597,7 +1597,7 @@ auto sourceFiles()
             outbuffer.h
         "),
         root: fileArray(env["ROOT"], "
-            aav.d complex.d env.d longdouble.d man.d optional.d response.d speller.d string.d strtold.d
+            aav.d complex.d env.d longdouble.d man.d optional.d response.d speller.d string.d strtold.d soft87.d
         "),
         rootHeaders: fileArray(env["ROOT"], "
             array.h bitarray.h complex_t.h ctfloat.h dcompat.h dsystem.h filename.h longdouble.h

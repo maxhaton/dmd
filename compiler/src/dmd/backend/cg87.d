@@ -673,8 +673,9 @@ ubyte loadconst(elem *e, int im)
         enum M_LOG2E_L     = 0x1.71547652b82fe178p+0L;       // 1.4427 fldl2e
         enum M_LOG2_L      = 0x1.34413509f79fef32p-2L;       // 0.30103 fldlg2
         enum M_LN2_L       = 0x1.62e42fefa39ef358p-1L;       // 0.693147 fldln2
+        alias L = targ_ldouble;
         immutable targ_ldouble[7] ldval =
-        [0.0,1.0,M_PI_L,M_LOG2T_L,M_LOG2E_L,M_LOG2_L,M_LN2_L];
+        [L(0.0),L(1.0),L(M_PI_L),L(M_LOG2T_L),L(M_LOG2E_L),L(M_LOG2_L),L(M_LN2_L)];
     }
 
     immutable ubyte[7 + 1] opcode =

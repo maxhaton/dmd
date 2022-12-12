@@ -19,11 +19,11 @@ version (CRuntime_Microsoft)
         alias longdouble = longdouble_soft;
 }
 else
-    alias longdouble = real;
+    alias longdouble = longdouble_soft;
 
 // longdouble_soft needed when building the backend with
 // Visual C or the frontend with LDC on Windows
-version (CRuntime_Microsoft):
+//version (CRuntime_Microsoft):
 extern (C++):
 nothrow:
 @nogc:
@@ -123,7 +123,11 @@ nothrow @nogc pure:
         else
             this(cast(double)r);
     }
-
+    this(bool sign, ushort exp, ulong mantissa)
+    {
+        this.exp_sign = exp | (sign << 15);
+        this.mantissa = mantissa;
+    }
     ushort exponent() const { return exp_sign & 0x7fff; }
     bool sign() const { return (exp_sign & 0x8000) != 0; }
 
@@ -263,7 +267,7 @@ else version(D_InlineAsm_X86)
 
 double ld_read(const longdouble_soft* pthis)
 {
-    double res;
+    double res = 3.14;
     version(AsmX86)
     {
         mixin(fld_parg!("pthis"));
@@ -405,7 +409,7 @@ longdouble_soft ld_sub(longdouble_soft ld1, longdouble_soft ld2)
 
 longdouble_soft ld_mul(longdouble_soft ld1, longdouble_soft ld2)
 {
-    version(AsmX86)
+    version(none)
     {
         mixin(fld_arg!("ld1"));
         mixin(fld_arg!("ld2"));
@@ -415,6 +419,17 @@ longdouble_soft ld_mul(longdouble_soft ld1, longdouble_soft ld2)
         }
         mixin(fstp_arg!("ld1"));
     }
+    import core.stdc.stdio;
+    debug printf("%Lf ", cast(real) ld1);
+    debug printf("* %Lf", cast(real) ld2);
+    import dmd.root.soft87;
+    const Real l = Real(ld1.sign(), ld1.exponent(), ld1.mantissa);
+    const Real r = Real(ld2.sign(), ld2.exponent(), ld2.mantissa);
+    const Real result = multiply(l, r);
+
+    debug printf("== %Lf\n", result.toNative());
+    typeof(return) ret;
+    ld1 = typeof(return)(result.sign, result.exponent, result.mantissa);
     return ld1;
 }
 

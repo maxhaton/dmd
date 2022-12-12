@@ -43,7 +43,7 @@ extern (C++) struct CTFloat
     version (GNU)
         enum yl2x_supported = false;
     else
-        enum yl2x_supported = __traits(compiles, core.math.yl2x(1.0L, 2.0L));
+        enum yl2x_supported = false;//__traits(compiles, core.math.yl2x(1.0L, 2.0L));
     enum yl2xp1_supported = yl2x_supported;
 
     static void yl2x(const real_t* x, const real_t* y, real_t* res) pure
@@ -184,7 +184,7 @@ extern (C++) struct CTFloat
             auto r = strtold(literal, null);
         version(CRuntime_DigitalMars) __locale_decpoint = save;
         isOutOfRange = (errno == ERANGE);
-        return r;
+        return real_t(r);
     }
 
     @system
@@ -198,7 +198,7 @@ extern (C++) struct CTFloat
         {
             char[4] sfmt = "%Lg\0";
             sfmt[2] = fmt;
-            auto len = sprintf(str, sfmt.ptr, x);
+            auto len = sprintf(str, sfmt.ptr, cast(real) x);
         }
 
         if (fmt != 'a' && fmt != 'A')

@@ -1795,7 +1795,7 @@ void shrinkLongDoubleConstantIfPossible(elem *e)
                 *(&vDouble) = cast(double)v;
         }
         else
-            *(&vDouble) = v;
+            *(&vDouble) = cast(double) v;
 
         if (v == vDouble)       // This will fail if compiler does NaN incorrectly!
         {
@@ -3115,7 +3115,7 @@ case_tym:
                 printf("%s ", buffer.ptr);
             }
             else
-                printf("%Lg ", e.EV.Vldouble);
+                printf("%Lg ", cast(real) e.EV.Vldouble);
             break;
         }
 

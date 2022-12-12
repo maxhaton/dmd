@@ -12,7 +12,7 @@
 module dmd.backend.bcomplex;
 
 public import dmd.root.longdouble : targ_ldouble = longdouble;
-import core.stdc.math : fabs, fabsl, sqrt;
+// import core.stdc.math : fabs, fabsl, sqrt;
 version(CRuntime_Microsoft)
     private import dmd.root.longdouble : fabsl, sqrt; // needed if longdouble is longdouble_soft
 
@@ -22,10 +22,13 @@ extern (C++):
 nothrow:
 
 // Roll our own for reliable bootstrapping
-
+import dmd.root.ctfloat;
+alias sqrt = CTFloat.sqrt;
+alias fabsl = CTFloat.fabs;
 
 struct Complex_f
 {
+    import core.math : fabs;
 nothrow:
     float re, im;
 
@@ -111,6 +114,7 @@ nothrow:
 struct Complex_d
 {
 nothrow:
+    import core.math : fabs;
     double re, im;
 
     static Complex_d div(ref Complex_d x, ref Complex_d y)

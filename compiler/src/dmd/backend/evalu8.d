@@ -39,7 +39,9 @@ import dmd.backend.ty;
 import dmd.backend.type;
 
 import dmd.common.int128;
-
+static import dmd.root.ctfloat;
+alias isnan = dmd.root.ctfloat.CTFloat.isNaN;
+alias isnan = core.stdc.math.isnan;
 version (SCPP)
 {
 import msgs2;
